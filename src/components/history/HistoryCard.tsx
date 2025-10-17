@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { HistoryItem } from '@/types/qr-types';
 import { format } from 'date-fns';
 import { Trash2 } from 'lucide-react';
+import Image from 'next/image';
 
 interface HistoryCardProps {
   item: HistoryItem;
@@ -19,10 +20,13 @@ export default function HistoryCard({ item, onLoad, onDelete }: HistoryCardProps
         {/* Thumbnail */}
         <div className="aspect-square bg-[#0a0a0a] rounded overflow-hidden mb-3 border border-[#333333]">
           {item.thumbnail ? (
-            <img
+            <Image
               src={item.thumbnail}
               alt={`QR Code - ${item.type}`}
+              width={400}
+              height={400}
               className="w-full h-full object-contain"
+              unoptimized={true}
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-[#a3a3a3]">

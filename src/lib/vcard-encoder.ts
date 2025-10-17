@@ -83,8 +83,8 @@ export function encodeVCard(data: VCardData): string {
   }
   
   // Company Logo
-  if (data.logo) {
-    const logoData = data.logo.replace(/^data:image\/[^;]+;base64,/, '');
+  if (data.orgLogo) {
+    const logoData = data.orgLogo.replace(/^data:image\/[^;]+;base64,/, '');
     lines.push(`LOGO;ENCODING=b;TYPE=JPEG:${logoData}`);
   }
   

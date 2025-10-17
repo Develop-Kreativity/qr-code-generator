@@ -119,7 +119,7 @@ export interface VCardData extends BaseQRData {
   jobTitle?: string;
   department?: string;
   role?: string;
-  logo?: string;  // Base64 encoded image
+  orgLogo?: string;  // Base64 encoded image (organization logo for VCard)
   workWebsite?: string;
   
   // Address Information

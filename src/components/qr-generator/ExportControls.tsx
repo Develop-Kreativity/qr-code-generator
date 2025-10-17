@@ -15,7 +15,7 @@ interface ExportControlsProps {
   colors: ColorConfig;
 }
 
-export default function ExportControls({ qrCode, qrData, colors }: ExportControlsProps) {
+export default function ExportControls({ qrCode, qrData }: ExportControlsProps) {
   const [exporting, setExporting] = useState(false);
   const [pngResolution, setPngResolution] = useState<PNGResolution>(1024);
   const [message, setMessage] = useState('');

@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { LogoConfig } from '@/types/qr-types';
 import { fileToDataURL, isValidImageFile, applyStrokeToLogo } from '@/lib/logo-processor';
 import { Upload, X } from 'lucide-react';
+import Image from 'next/image';
 
 interface QRLogoUploadProps {
   logo: LogoConfig | undefined;
@@ -154,10 +155,13 @@ export default function QRLogoUpload({ logo, backgroundColor, onChange }: QRLogo
           {/* Preview */}
           <div className="flex justify-center p-4 bg-[#0a0a0a] rounded-lg border border-[#333333]">
             {previewImage ? (
-              <img
+              <Image
                 src={previewImage}
                 alt="Logo preview"
+                width={120}
+                height={120}
                 className="max-w-[120px] max-h-[120px] object-contain"
+                unoptimized={true}
               />
             ) : (
               <div className="w-[120px] h-[120px] flex items-center justify-center text-[#a3a3a3] text-sm">

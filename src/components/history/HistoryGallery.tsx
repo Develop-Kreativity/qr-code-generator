@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { getHistory, deleteHistoryItem, clearHistory, filterHistoryByType, sortHistory } from '@/lib/local-storage';
-import { HistoryItem, QRData, ColorConfig, QRType } from '@/types/qr-types';
+import { HistoryItem, QRData, ColorConfig } from '@/types/qr-types';
 import HistoryCard from './HistoryCard';
 import { X, Trash2, Search } from 'lucide-react';
 
@@ -21,20 +21,12 @@ export default function HistoryGallery({ onClose, onLoadItem }: HistoryGalleryPr
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'type'>('newest');
   const [searchQuery, setSearchQuery] = useState('');
 
-  useEffect(() => {
-    loadHistory();
-  }, []);
-
-  useEffect(() => {
-    applyFiltersAndSort();
-  }, [items, filterType, sortBy, searchQuery]);
-
   const loadHistory = () => {
     const history = getHistory();
     setItems(history);
   };
 
-  const applyFiltersAndSort = () => {
+  const applyFiltersAndSort = useCallback(() => {
     let result = [...items];
 
     // Apply type filter
@@ -73,7 +65,15 @@ export default function HistoryGallery({ onClose, onLoadItem }: HistoryGalleryPr
     }
 
     setFilteredItems(result);
-  };
+  }, [items, filterType, sortBy, searchQuery]);
+
+  useEffect(() => {
+    loadHistory();
+  }, []);
+
+  useEffect(() => {
+    applyFiltersAndSort();
+  }, [applyFiltersAndSort]);
 
   const getSearchText = (item: HistoryItem): string => {
     const { data } = item;
