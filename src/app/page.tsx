@@ -1,103 +1,172 @@
-import Image from "next/image";
+'use client';
+
+import { useState, useCallback } from 'react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { QRType, QRData, ColorConfig } from '@/types/qr-types';
+import QRCodeStyling from 'qr-code-styling';
+import { History } from 'lucide-react';
+import QRPreview from '@/components/qr-generator/QRPreview';
+import QRColorPicker from '@/components/qr-generator/QRColorPicker';
+import ExportControls from '@/components/qr-generator/ExportControls';
+import URLForm from '@/components/qr-generator/forms/URLForm';
+import TextForm from '@/components/qr-generator/forms/TextForm';
+import EmailForm from '@/components/qr-generator/forms/EmailForm';
+import PhoneForm from '@/components/qr-generator/forms/PhoneForm';
+import SMSForm from '@/components/qr-generator/forms/SMSForm';
+import LocationForm from '@/components/qr-generator/forms/LocationForm';
+import VCardForm from '@/components/qr-generator/forms/VCardForm';
+import MeCardForm from '@/components/qr-generator/forms/MeCardForm';
+import HistoryGallery from '@/components/history/HistoryGallery';
+
+// Default company colors
+const DEFAULT_COLORS: ColorConfig = {
+  foreground: '#4a28fd',  // Company primary color (vivid blue)
+  background: '#ffffff'   // White background for QR code readability
+};
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [activeTab, setActiveTab] = useState<QRType>('url');
+  const [qrData, setQrData] = useState<QRData | null>(null);
+  const [colors, setColors] = useState<ColorConfig>(DEFAULT_COLORS);
+  const [qrCode, setQrCode] = useState<QRCodeStyling | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  const handleDataChange = useCallback((data: QRData) => {
+    setQrData(data);
+  }, []);
+
+  const handleColorChange = useCallback((newColors: ColorConfig) => {
+    setColors(newColors);
+  }, []);
+
+  const handleQRCodeGenerated = useCallback((code: QRCodeStyling) => {
+    setQrCode(code);
+  }, []);
+
+  const handleLoadFromHistory = useCallback((data: QRData, historyColors: ColorConfig) => {
+    setQrData(data);
+    setColors(historyColors);
+    setActiveTab(data.type);
+    setShowHistory(false);
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-[#111111]">
+      {/* Header */}
+      <header className="border-b border-[#333333] bg-[#111111]">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl text-white">QR Code Generator</h1>
+              <p className="text-sm text-[#a3a3a3] mt-1">
+                Create QR codes for various data types with custom styling
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowHistory(!showHistory)}
+              className="gap-2 bg-[#1a1a1a] border-[#333333] text-white hover:bg-[#4a28fd] hover:border-[#4a28fd]"
+            >
+              <History className="h-4 w-4" />
+              {showHistory ? 'Hide' : 'Show'} History
+            </Button>
+          </div>
         </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="container mx-auto px-4 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Left Column: Forms */}
+          <div className="lg:col-span-7">
+            <Card className="p-6 bg-[#1a1a1a] border-[#333333]">
+              <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as QRType)}>
+                <TabsList className="grid w-full grid-cols-4 lg:grid-cols-8 gap-1 mb-6">
+                  <TabsTrigger value="url" className="text-xs">URL</TabsTrigger>
+                  <TabsTrigger value="text" className="text-xs">Text</TabsTrigger>
+                  <TabsTrigger value="email" className="text-xs">Email</TabsTrigger>
+                  <TabsTrigger value="phone" className="text-xs">Phone</TabsTrigger>
+                  <TabsTrigger value="sms" className="text-xs">SMS</TabsTrigger>
+                  <TabsTrigger value="vcard" className="text-xs">VCard</TabsTrigger>
+                  <TabsTrigger value="mecard" className="text-xs">MeCard</TabsTrigger>
+                  <TabsTrigger value="location" className="text-xs">Location</TabsTrigger>
+                </TabsList>
+
+                <div className="space-y-6">
+                  <TabsContent value="url" className="mt-0">
+                    <URLForm onChange={handleDataChange} initialData={qrData?.type === 'url' ? qrData : undefined} />
+                  </TabsContent>
+
+                  <TabsContent value="text" className="mt-0">
+                    <TextForm onChange={handleDataChange} initialData={qrData?.type === 'text' ? qrData : undefined} />
+                  </TabsContent>
+
+                  <TabsContent value="email" className="mt-0">
+                    <EmailForm onChange={handleDataChange} initialData={qrData?.type === 'email' ? qrData : undefined} />
+                  </TabsContent>
+
+                  <TabsContent value="phone" className="mt-0">
+                    <PhoneForm onChange={handleDataChange} initialData={qrData?.type === 'phone' ? qrData : undefined} />
+                  </TabsContent>
+
+                  <TabsContent value="sms" className="mt-0">
+                    <SMSForm onChange={handleDataChange} initialData={qrData?.type === 'sms' ? qrData : undefined} />
+                  </TabsContent>
+
+                  <TabsContent value="vcard" className="mt-0">
+                    <VCardForm onChange={handleDataChange} initialData={qrData?.type === 'vcard' ? qrData : undefined} />
+                  </TabsContent>
+
+                  <TabsContent value="mecard" className="mt-0">
+                    <MeCardForm onChange={handleDataChange} initialData={qrData?.type === 'mecard' ? qrData : undefined} />
+                  </TabsContent>
+
+                  <TabsContent value="location" className="mt-0">
+                    <LocationForm onChange={handleDataChange} initialData={qrData?.type === 'location' ? qrData : undefined} />
+                  </TabsContent>
+
+                  {/* Color Picker */}
+                  <div className="pt-4 border-t border-border">
+                    <QRColorPicker colors={colors} onChange={handleColorChange} />
+                  </div>
+                </div>
+              </Tabs>
+            </Card>
+          </div>
+
+          {/* Right Column: Preview & Export */}
+          <div className="lg:col-span-5 space-y-6">
+            <Card className="p-6 bg-[#1a1a1a] border-[#333333]">
+              <h2 className="text-lg mb-4 text-white">Preview</h2>
+              <QRPreview
+                data={qrData}
+                colors={colors}
+                onQRCodeGenerated={handleQRCodeGenerated}
+              />
+            </Card>
+
+            {qrCode && (
+              <Card className="p-6 bg-[#1a1a1a] border-[#333333]">
+                <h2 className="text-lg mb-4 text-white">Export</h2>
+                <ExportControls qrCode={qrCode} qrData={qrData} colors={colors} />
+              </Card>
+            )}
+          </div>
+        </div>
+
+        {/* History Sidebar */}
+        {showHistory && (
+          <div className="fixed inset-y-0 right-0 w-full sm:w-96 bg-[#111111] border-l border-[#333333] shadow-lg z-50 overflow-y-auto">
+            <HistoryGallery
+              onClose={() => setShowHistory(false)}
+              onLoadItem={handleLoadFromHistory}
+            />
+          </div>
+        )}
       </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
     </div>
   );
 }
