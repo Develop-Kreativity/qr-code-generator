@@ -11,6 +11,7 @@ import {
 } from '@/types/qr-types';
 import { encodeVCard } from './vcard-encoder';
 import { encodeMeCard } from './mecard-encoder';
+import { applyStrokeToLogo } from './logo-processor';
 
 /**
  * Generates a QR code instance with the provided data and styling options
@@ -19,21 +20,38 @@ import { encodeMeCard } from './mecard-encoder';
  * @param size QR code size in pixels (default: 300)
  * @returns QRCodeStyling instance
  */
-export function generateQRCode(
+export async function generateQRCode(
   data: QRData,
   colors: ColorConfig,
   size: number = 300
-): QRCodeStyling {
+): Promise<QRCodeStyling> {
   const qrData = formatQRData(data);
+  
+  // Process logo if present
+  let processedLogoImage: string | undefined;
+  if (data.logo) {
+    try {
+      processedLogoImage = await applyStrokeToLogo(
+        data.logo.image,
+        data.logo.strokeWidth,
+        data.logo.strokeColor
+      );
+    } catch (error) {
+      console.error('Failed to process logo:', error);
+      // Continue without logo if processing fails
+    }
+  }
   
   const options: QRGenerationOptions = {
     data: qrData,
     colors: colors,
+    logo: data.logo,
     size: size,
-    errorCorrectionLevel: 'M'  // Medium error correction
+    // Use High error correction when logo is present for better scanability
+    errorCorrectionLevel: data.logo ? 'H' : 'M'
   };
   
-  return createQRCodeStyling(options);
+  return createQRCodeStyling(options, processedLogoImage);
 }
 
 /**
@@ -118,12 +136,13 @@ function formatLocationData(data: LocationData): string {
 /**
  * Creates a QRCodeStyling instance with the specified options
  */
-function createQRCodeStyling(options: QRGenerationOptions): QRCodeStyling {
+function createQRCodeStyling(options: QRGenerationOptions, processedLogoImage?: string): QRCodeStyling {
   return new QRCodeStyling({
     width: options.size,
     height: options.size,
     data: options.data,
     margin: 10,
+    image: processedLogoImage,  // Add processed logo image
     qrOptions: {
       typeNumber: 0,  // Auto-detect
       mode: 'Byte',

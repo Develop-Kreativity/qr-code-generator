@@ -47,8 +47,8 @@ export default function QRPreview({ data, colors, onQRCodeGenerated }: QRPreview
       try {
         setError('');
 
-        // Generate QR code (synchronous operation)
-        const newQrCode = generateQRCode(data, colors, 300);
+        // Generate QR code (now async operation due to logo processing)
+        const newQrCode = await generateQRCode(data, colors, 300);
         
         // Notify parent component FIRST so export section appears immediately
         callbackRef.current(newQrCode);

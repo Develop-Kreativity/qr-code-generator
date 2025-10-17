@@ -4,11 +4,13 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { QRType, QRData, ColorConfig } from '@/types/qr-types';
+import { Separator } from '@/components/ui/separator';
+import { QRType, QRData, ColorConfig, LogoConfig } from '@/types/qr-types';
 import QRCodeStyling from 'qr-code-styling';
 import { History } from 'lucide-react';
 import QRPreview from '@/components/qr-generator/QRPreview';
 import QRColorPicker from '@/components/qr-generator/QRColorPicker';
+import QRLogoUpload from '@/components/qr-generator/QRLogoUpload';
 import ExportControls from '@/components/qr-generator/ExportControls';
 import URLForm from '@/components/qr-generator/forms/URLForm';
 import TextForm from '@/components/qr-generator/forms/TextForm';
@@ -33,18 +35,51 @@ export default function Home() {
   const [colors, setColors] = useState<ColorConfig>(DEFAULT_COLORS);
   const [qrCode, setQrCode] = useState<QRCodeStyling | null>(null);
   const [showHistory, setShowHistory] = useState(false);
+  
+  // Track logo per QR type
+  const [logosByType, setLogosByType] = useState<Record<QRType, LogoConfig | undefined>>({
+    url: undefined,
+    text: undefined,
+    email: undefined,
+    phone: undefined,
+    sms: undefined,
+    vcard: undefined,
+    mecard: undefined,
+    location: undefined,
+  });
 
   // Track the last auto-saved history entry ID per QR type
   const autoSaveTracker = useRef<Record<string, string>>({});
   const autoSaveTimer = useRef<NodeJS.Timeout | null>(null);
 
   const handleDataChange = useCallback((data: QRData) => {
-    setQrData(data);
-  }, []);
+    // Include the current logo for this QR type
+    const currentLogo = logosByType[data.type];
+    setQrData({
+      ...data,
+      logo: currentLogo
+    });
+  }, [logosByType]);
 
   const handleColorChange = useCallback((newColors: ColorConfig) => {
     setColors(newColors);
   }, []);
+  
+  const handleLogoChange = useCallback((logo: LogoConfig | undefined) => {
+    // Update logo for the current active tab
+    setLogosByType(prev => ({
+      ...prev,
+      [activeTab]: logo
+    }));
+    
+    // Update qrData with new logo if qrData exists
+    if (qrData) {
+      setQrData({
+        ...qrData,
+        logo: logo
+      });
+    }
+  }, [activeTab, qrData]);
 
   const handleQRCodeGenerated = useCallback((code: QRCodeStyling) => {
     setQrCode(code);
@@ -55,6 +90,14 @@ export default function Home() {
     setColors(historyColors);
     setActiveTab(data.type);
     setShowHistory(false);
+    
+    // Load logo from history data
+    if (data.logo) {
+      setLogosByType(prev => ({
+        ...prev,
+        [data.type]: data.logo
+      }));
+    }
   }, []);
 
   // Auto-save function with debouncing
@@ -200,13 +243,23 @@ export default function Home() {
                   <div className="pt-4 border-t border-border">
                     <QRColorPicker colors={colors} onChange={handleColorChange} />
                   </div>
+
+                  {/* Logo Upload */}
+                  <Separator className="my-4" />
+                  <div>
+                    <QRLogoUpload
+                      logo={logosByType[activeTab]}
+                      backgroundColor={colors.background}
+                      onChange={handleLogoChange}
+                    />
+                  </div>
                 </div>
               </Tabs>
             </Card>
           </div>
 
           {/* Right Column: Preview & Export */}
-          <div className="lg:col-span-5 space-y-6">
+          <div className="lg:col-span-5 space-y-6 lg:sticky lg:top-4 lg:self-start">
             <Card className="p-6 bg-[#1a1a1a] border-[#333333]">
               <h2 className="text-lg mb-4 text-white">Preview</h2>
               <QRPreview

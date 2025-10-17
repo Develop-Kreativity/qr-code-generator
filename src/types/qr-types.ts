@@ -11,9 +11,17 @@ export interface ColorConfig {
   background: string;
 }
 
+// Logo Configuration
+export interface LogoConfig {
+  image: string;           // Base64 data URL
+  strokeWidth: number;     // Stroke width in pixels
+  strokeColor: string;     // Hex color for stroke
+}
+
 // Base QR Data Interface
 export interface BaseQRData {
   type: QRType;
+  logo?: LogoConfig;       // Optional logo configuration
 }
 
 // URL Data
@@ -164,6 +172,7 @@ export interface StorageSchema {
 export interface QRGenerationOptions {
   data: string;
   colors: ColorConfig;
+  logo?: LogoConfig;
   size?: number;
   errorCorrectionLevel?: 'L' | 'M' | 'Q' | 'H';
 }
