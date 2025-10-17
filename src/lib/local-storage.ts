@@ -22,17 +22,6 @@ export async function saveToHistory(
   try {
     const schema = loadSchema();
     
-    // Check for duplicates (same type and data)
-    const isDuplicate = schema.items.some(item => 
-      item.type === data.type && 
-      JSON.stringify(item.data) === JSON.stringify(data)
-    );
-    
-    if (isDuplicate) {
-      console.log('Duplicate QR code, not saving to history');
-      return null;
-    }
-    
     // Generate thumbnail
     const thumbnail = await generateThumbnail(qrCode, 100);
     
@@ -64,6 +53,55 @@ export async function saveToHistory(
     
   } catch (error) {
     console.error('Failed to save to history:', error);
+    return null;
+  }
+}
+
+/**
+ * Updates an existing history item with new data
+ * @param id History item ID to update
+ * @param data New QR code data
+ * @param colors New color configuration
+ * @param qrCode QRCodeStyling instance for thumbnail regeneration
+ * @returns The updated history item or null if update failed
+ */
+export async function updateHistoryItem(
+  id: string,
+  data: QRData,
+  colors: ColorConfig,
+  qrCode: QRCodeStyling
+): Promise<HistoryItem | null> {
+  try {
+    const schema = loadSchema();
+    const itemIndex = schema.items.findIndex(item => item.id === id);
+    
+    if (itemIndex === -1) {
+      console.error('History item not found:', id);
+      return null;
+    }
+    
+    // Generate new thumbnail
+    const thumbnail = await generateThumbnail(qrCode, 100);
+    
+    // Update the history item
+    const updatedItem: HistoryItem = {
+      id: id,
+      timestamp: Date.now(),
+      type: data.type,
+      data: data,
+      colors: colors,
+      thumbnail: thumbnail
+    };
+    
+    schema.items[itemIndex] = updatedItem;
+    
+    // Save to local storage
+    saveSchema(schema);
+    
+    return updatedItem;
+    
+  } catch (error) {
+    console.error('Failed to update history item:', error);
     return null;
   }
 }

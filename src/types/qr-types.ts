@@ -2,7 +2,7 @@
 export type QRType = 'url' | 'text' | 'email' | 'phone' | 'sms' | 'vcard' | 'mecard' | 'location';
 
 // Export Format Types
-export type ExportFormat = 'png' | 'svg' | 'pdf' | 'eps';
+export type ExportFormat = 'png' | 'pdf';
 export type PNGResolution = 512 | 1024 | 2048;
 
 // Color Configuration
@@ -173,5 +173,10 @@ export interface ExportOptions {
   format: ExportFormat;
   resolution?: PNGResolution;
   filename?: string;
+}
+
+// Auto-save Tracker
+export interface AutoSaveTracker {
+  [key: string]: string; // Maps QRType to the last auto-saved history item ID
 }
 

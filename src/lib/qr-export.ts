@@ -6,7 +6,7 @@ import { format } from 'date-fns';
 /**
  * Exports a QR code in the specified format
  * @param qrCode QRCodeStyling instance
- * @param exportFormat Export format (png, svg, pdf, eps)
+ * @param exportFormat Export format (png, pdf)
  * @param filename Base filename (without extension)
  * @param resolution PNG resolution (only used for PNG export)
  */
@@ -23,14 +23,8 @@ export async function exportQRCode(
     case 'png':
       await exportAsPNG(qrCode, fullFilename, resolution);
       break;
-    case 'svg':
-      await exportAsSVG(qrCode, fullFilename);
-      break;
     case 'pdf':
       await exportAsPDF(qrCode, fullFilename);
-      break;
-    case 'eps':
-      await exportAsEPS(qrCode, fullFilename);
       break;
     default:
       throw new Error(`Unsupported export format: ${exportFormat}`);
@@ -76,43 +70,6 @@ async function exportAsPNG(
 }
 
 /**
- * Exports QR code as SVG with proper rendering attributes
- * Uses non-destructive approach to avoid mutating the original QR instance
- */
-async function exportAsSVG(
-  qrCode: QRCodeStyling,
-  filename: string
-): Promise<void> {
-  try {
-    // Get raw SVG data without affecting DOM
-    const data = await qrCode.getRawData('svg');
-    
-    if (!data) {
-      throw new Error('Failed to generate SVG data');
-    }
-    
-    // Convert to Blob if it's a Buffer (Node.js environment)
-    const blob = data instanceof Blob ? data : new Blob([new Uint8Array(data as unknown as ArrayBuffer)], { type: 'image/svg+xml' });
-    
-    // Read SVG content and enhance with proper attributes
-    const svgText = await blob.text();
-    
-    // Add shape-rendering attribute for crisp edges if not present
-    const enhancedSVG = svgText.includes('shape-rendering')
-      ? svgText
-      : svgText.replace(/<svg/, '<svg shape-rendering="crispEdges"');
-    
-    // Create blob and download
-    const enhancedBlob = new Blob([enhancedSVG], { type: 'image/svg+xml' });
-    downloadBlob(enhancedBlob, `${filename}.svg`);
-    
-  } catch (error) {
-    console.error('SVG export failed:', error);
-    throw new Error('Failed to export QR code as SVG');
-  }
-}
-
-/**
  * Exports QR code as PDF
  * Uses non-destructive approach to avoid mutating the original QR instance
  */
@@ -121,8 +78,15 @@ async function exportAsPDF(
   filename: string
 ): Promise<void> {
   try {
+    // Create isolated QR instance for export to avoid mutating original
+    // Access _options property which contains the QR configuration
+    const options = (qrCode as QRCodeStyling & { _options: Record<string, unknown> })._options;
+    const exportQR = new QRCodeStyling({
+      ...options
+    });
+    
     // Get QR code as PNG data without affecting DOM
-    const data = await qrCode.getRawData('png');
+    const data = await exportQR.getRawData('png');
     
     if (!data) {
       throw new Error('Failed to generate PNG data');
@@ -142,17 +106,13 @@ async function exportAsPDF(
     });
     
     // A4 dimensions: 210mm x 297mm
-    // Center QR code on page
+    // Center QR code on page (vertically and horizontally)
     const qrSize = 100;  // 100mm x 100mm QR code
     const xPos = (210 - qrSize) / 2;
-    const yPos = 50;  // 50mm from top
+    const yPos = (297 - qrSize) / 2;  // Center vertically on A4
     
     // Add QR code image to PDF
     pdf.addImage(dataUrl, 'PNG', xPos, yPos, qrSize, qrSize);
-    
-    // Add metadata text
-    pdf.setFontSize(10);
-    pdf.text(`Generated: ${format(new Date(), 'PPpp')}`, 105, 170, { align: 'center' });
     
     // Save PDF
     pdf.save(`${filename}.pdf`);
@@ -160,38 +120,6 @@ async function exportAsPDF(
   } catch (error) {
     console.error('PDF export failed:', error);
     throw new Error('Failed to export QR code as PDF');
-  }
-}
-
-/**
- * Exports QR code as EPS (Encapsulated PostScript)
- * Note: Exports as SVG with .eps extension for professional tool conversion
- */
-async function exportAsEPS(
-  qrCode: QRCodeStyling,
-  filename: string
-): Promise<void> {
-  try {
-    // Get QR code as SVG (most compatible vector format)
-    const data = await qrCode.getRawData('svg');
-    
-    if (!data) {
-      throw new Error('Failed to generate SVG data');
-    }
-    
-    // Convert to Blob if it's a Buffer (Node.js environment)
-    const blob = data instanceof Blob ? data : new Blob([new Uint8Array(data as unknown as ArrayBuffer)], { type: 'image/svg+xml' });
-    
-    // Download as SVG file (users can convert to EPS using professional tools)
-    // This is more reliable than attempting browser-based conversion
-    downloadBlob(blob, `${filename}.svg`);
-    
-    // Note: True EPS conversion requires server-side tools like Inkscape
-    console.info('SVG file generated. Convert to EPS using Illustrator or Inkscape for best results.');
-    
-  } catch (error) {
-    console.error('EPS export failed:', error);
-    throw new Error('Failed to export QR code. Please try SVG format instead.');
   }
 }
 

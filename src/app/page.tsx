@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,6 +19,7 @@ import LocationForm from '@/components/qr-generator/forms/LocationForm';
 import VCardForm from '@/components/qr-generator/forms/VCardForm';
 import MeCardForm from '@/components/qr-generator/forms/MeCardForm';
 import HistoryGallery from '@/components/history/HistoryGallery';
+import { saveToHistory, updateHistoryItem } from '@/lib/local-storage';
 
 // Default company colors
 const DEFAULT_COLORS: ColorConfig = {
@@ -32,6 +33,10 @@ export default function Home() {
   const [colors, setColors] = useState<ColorConfig>(DEFAULT_COLORS);
   const [qrCode, setQrCode] = useState<QRCodeStyling | null>(null);
   const [showHistory, setShowHistory] = useState(false);
+
+  // Track the last auto-saved history entry ID per QR type
+  const autoSaveTracker = useRef<Record<string, string>>({});
+  const autoSaveTimer = useRef<NodeJS.Timeout | null>(null);
 
   const handleDataChange = useCallback((data: QRData) => {
     setQrData(data);
@@ -51,6 +56,69 @@ export default function Home() {
     setActiveTab(data.type);
     setShowHistory(false);
   }, []);
+
+  // Auto-save function with debouncing
+  useEffect(() => {
+    // Clear existing timer
+    if (autoSaveTimer.current) {
+      clearTimeout(autoSaveTimer.current);
+    }
+
+    // Only auto-save if we have valid QR data and QR code instance
+    if (!qrData || !qrCode) {
+      return;
+    }
+
+    // Set up new timer for 5 seconds
+    autoSaveTimer.current = setTimeout(async () => {
+      try {
+        const currentType = qrData.type;
+        const existingEntryId = autoSaveTracker.current[currentType];
+
+        if (existingEntryId) {
+          // Update existing entry for this QR type
+          const updatedItem = await updateHistoryItem(
+            existingEntryId,
+            qrData,
+            colors,
+            qrCode
+          );
+          if (updatedItem) {
+            console.log('Auto-saved: Updated existing entry for', currentType);
+          }
+        } else {
+          // Create new entry for this QR type
+          const newItem = await saveToHistory(qrData, colors, qrCode);
+          if (newItem) {
+            autoSaveTracker.current[currentType] = newItem.id;
+            console.log('Auto-saved: Created new entry for', currentType);
+          }
+        }
+      } catch (error) {
+        console.error('Auto-save failed:', error);
+      }
+    }, 5000); // 5 seconds delay
+
+    // Cleanup timer on unmount or when dependencies change
+    return () => {
+      if (autoSaveTimer.current) {
+        clearTimeout(autoSaveTimer.current);
+      }
+    };
+  }, [qrData, colors, qrCode]);
+
+  // When switching tabs, clear the tracking for the previous tab type
+  // This ensures the next edit on that tab creates a new entry
+  const handleTabChange = useCallback((value: string) => {
+    const newTab = value as QRType;
+    
+    // Clear the auto-save tracking for the current tab before switching
+    if (activeTab && autoSaveTracker.current[activeTab]) {
+      delete autoSaveTracker.current[activeTab];
+    }
+    
+    setActiveTab(newTab);
+  }, [activeTab]);
 
   return (
     <div className="min-h-screen bg-[#111111]">
@@ -83,7 +151,7 @@ export default function Home() {
           {/* Left Column: Forms */}
           <div className="lg:col-span-7">
             <Card className="p-6 bg-[#1a1a1a] border-[#333333]">
-              <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as QRType)}>
+              <Tabs value={activeTab} onValueChange={handleTabChange}>
                 <TabsList className="grid w-full grid-cols-4 lg:grid-cols-8 gap-1 mb-6">
                   <TabsTrigger value="url" className="text-xs">URL</TabsTrigger>
                   <TabsTrigger value="text" className="text-xs">Text</TabsTrigger>
