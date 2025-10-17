@@ -10,6 +10,8 @@ import QRCodeStyling from 'qr-code-styling';
 import { History } from 'lucide-react';
 import QRPreview from '@/components/qr-generator/QRPreview';
 import QRColorPicker from '@/components/qr-generator/QRColorPicker';
+import QRGradientControls from '@/components/qr-generator/QRGradientControls';
+import QRBackgroundImage from '@/components/qr-generator/QRBackgroundImage';
 import QRLogoUpload from '@/components/qr-generator/QRLogoUpload';
 import ExportControls from '@/components/qr-generator/ExportControls';
 import URLForm from '@/components/qr-generator/forms/URLForm';
@@ -61,8 +63,8 @@ export default function Home() {
     });
   }, [logosByType]);
 
-  const handleColorChange = useCallback((newColors: ColorConfig) => {
-    setColors(newColors);
+  const handleColorChange = useCallback((newColors: ColorConfig | Partial<ColorConfig>) => {
+    setColors(prev => ({ ...prev, ...newColors }));
   }, []);
   
   const handleLogoChange = useCallback((logo: LogoConfig | undefined) => {
@@ -242,6 +244,21 @@ export default function Home() {
                   {/* Color Picker */}
                   <div className="pt-4 border-t border-border">
                     <QRColorPicker colors={colors} onChange={handleColorChange} />
+                  </div>
+
+                  {/* Gradient Controls */}
+                  <Separator className="my-4" />
+                  <div>
+                    <QRGradientControls colors={colors} onChange={handleColorChange} />
+                  </div>
+
+                  {/* Background Image */}
+                  <Separator className="my-4" />
+                  <div>
+                    <QRBackgroundImage
+                      backgroundImage={colors.backgroundImage}
+                      onChange={(config) => handleColorChange({ backgroundImage: config })}
+                    />
                   </div>
 
                   {/* Logo Upload */}

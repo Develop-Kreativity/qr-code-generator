@@ -137,6 +137,21 @@ function formatLocationData(data: LocationData): string {
  * Creates a QRCodeStyling instance with the specified options
  */
 function createQRCodeStyling(options: QRGenerationOptions, processedLogoImage?: string): QRCodeStyling {
+  const { colors } = options;
+  
+  // Configure gradient if enabled
+  const dotsGradient = colors.gradientEnabled ? {
+    type: colors.gradientType || 'linear',
+    rotation: (colors.gradientRotation || 0) * (Math.PI / 180), // Convert degrees to radians
+    colorStops: [
+      { offset: 0, color: colors.foreground },
+      { offset: 1, color: colors.gradientSecondaryColor || colors.foreground }
+    ]
+  } : undefined;
+  
+  // Configure background color (transparent if enabled or if background image is present)
+  const backgroundColor = (colors.transparentBackground || colors.backgroundImage) ? 'transparent' : colors.background;
+  
   return new QRCodeStyling({
     width: options.size,
     height: options.size,
@@ -154,18 +169,21 @@ function createQRCodeStyling(options: QRGenerationOptions, processedLogoImage?: 
       margin: 0
     },
     dotsOptions: {
-      color: options.colors.foreground,
+      color: colors.gradientEnabled ? undefined : colors.foreground,
+      gradient: dotsGradient,
       type: 'rounded'  // Options: 'rounded', 'dots', 'classy', 'classy-rounded', 'square', 'extra-rounded'
     },
     backgroundOptions: {
-      color: options.colors.background
+      color: backgroundColor
     },
     cornersSquareOptions: {
-      color: options.colors.foreground,
+      color: colors.gradientEnabled ? undefined : colors.foreground,
+      gradient: dotsGradient,
       type: 'extra-rounded'
     },
     cornersDotOptions: {
-      color: options.colors.foreground,
+      color: colors.gradientEnabled ? undefined : colors.foreground,
+      gradient: dotsGradient,
       type: 'dot'
     }
   });

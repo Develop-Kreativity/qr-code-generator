@@ -15,7 +15,7 @@ interface ExportControlsProps {
   colors: ColorConfig;
 }
 
-export default function ExportControls({ qrCode, qrData }: ExportControlsProps) {
+export default function ExportControls({ qrCode, qrData, colors }: ExportControlsProps) {
   const [exporting, setExporting] = useState(false);
   const [pngResolution, setPngResolution] = useState<PNGResolution>(1024);
   const [message, setMessage] = useState('');
@@ -28,7 +28,7 @@ export default function ExportControls({ qrCode, qrData }: ExportControlsProps) 
       setMessage('');
 
       const filename = `qr_${qrData.type}`;
-      await exportQRCode(qrCode, format, filename, pngResolution);
+      await exportQRCode(qrCode, format, filename, pngResolution, colors);
 
       setMessage(`✓ Exported as ${format.toUpperCase()}`);
       setTimeout(() => setMessage(''), 3000);

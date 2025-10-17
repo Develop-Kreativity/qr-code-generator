@@ -5,10 +5,24 @@ export type QRType = 'url' | 'text' | 'email' | 'phone' | 'sms' | 'vcard' | 'mec
 export type ExportFormat = 'png' | 'pdf';
 export type PNGResolution = 512 | 1024 | 2048;
 
+// Background Image Configuration
+export interface BackgroundImageConfig {
+  image: string;          // Base64 data URL
+  opacity: number;        // 0-1 for transparency
+}
+
 // Color Configuration
 export interface ColorConfig {
   foreground: string;
   background: string;
+  // Gradient Configuration
+  gradientEnabled?: boolean;
+  gradientSecondaryColor?: string;
+  gradientType?: 'linear' | 'radial';
+  gradientRotation?: number;  // 0-360 degrees
+  // Background Options
+  transparentBackground?: boolean;
+  backgroundImage?: BackgroundImageConfig;
 }
 
 // Logo Configuration

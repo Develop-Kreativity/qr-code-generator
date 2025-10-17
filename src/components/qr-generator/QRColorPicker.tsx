@@ -6,7 +6,7 @@ import { ColorConfig } from '@/types/qr-types';
 
 interface QRColorPickerProps {
   colors: ColorConfig;
-  onChange: (colors: ColorConfig) => void;
+  onChange: (colors: ColorConfig | Partial<ColorConfig>) => void;
 }
 
 const PRESET_COLORS = [
@@ -20,26 +20,39 @@ const PRESET_COLORS = [
 
 export default function QRColorPicker({ colors, onChange }: QRColorPickerProps) {
   const handleForegroundChange = (color: string) => {
-    onChange({ ...colors, foreground: color });
+    onChange({ foreground: color });
   };
 
   const handleBackgroundChange = (color: string) => {
-    onChange({ ...colors, background: color });
+    onChange({ background: color });
+  };
+
+  const handleTransparentToggle = () => {
+    onChange({ transparentBackground: !colors.transparentBackground });
   };
 
   const handlePresetClick = (preset: { foreground: string; background: string }) => {
-    onChange(preset);
+    onChange({ foreground: preset.foreground, background: preset.background });
   };
 
   const handleReset = () => {
-    onChange({ foreground: '#4a28fd', background: '#ffffff' });
+    onChange({ 
+      foreground: '#4a28fd', 
+      background: '#ffffff',
+      transparentBackground: false
+    });
   };
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-sm uppercase tracking-wide text-[#a3a3a3]">Customize Colors</h3>
-        <Button variant="ghost" size="sm" onClick={handleReset} className="text-white hover:text-[#4a28fd] hover:bg-[#1a1a1a]">
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onClick={handleReset} 
+          className="text-white hover:text-[#4a28fd] hover:bg-[#1a1a1a]"
+        >
           Reset
         </Button>
       </div>
@@ -53,13 +66,13 @@ export default function QRColorPicker({ colors, onChange }: QRColorPickerProps) 
               type="color"
               value={colors.foreground}
               onChange={(e) => handleForegroundChange(e.target.value)}
-              className="h-10 w-full rounded border border-border cursor-pointer"
+              className="h-10 w-full rounded border border-[#333333] cursor-pointer bg-[#0a0a0a]"
             />
             <input
               type="text"
               value={colors.foreground}
               onChange={(e) => handleForegroundChange(e.target.value)}
-              className="h-10 w-24 px-2 text-sm rounded border border-border"
+              className="h-10 w-24 px-2 text-sm rounded border border-[#333333] bg-[#0a0a0a] text-white focus:border-[#4a28fd] focus:outline-none"
               placeholder="#000000"
             />
           </div>
@@ -73,15 +86,29 @@ export default function QRColorPicker({ colors, onChange }: QRColorPickerProps) 
               type="color"
               value={colors.background}
               onChange={(e) => handleBackgroundChange(e.target.value)}
-              className="h-10 w-full rounded border border-border cursor-pointer"
+              disabled={colors.transparentBackground}
+              className="h-10 w-full rounded border border-[#333333] cursor-pointer bg-[#0a0a0a] disabled:opacity-50 disabled:cursor-not-allowed"
             />
             <input
               type="text"
               value={colors.background}
               onChange={(e) => handleBackgroundChange(e.target.value)}
-              className="h-10 w-24 px-2 text-sm rounded border border-border"
+              disabled={colors.transparentBackground}
+              className="h-10 w-24 px-2 text-sm rounded border border-[#333333] bg-[#0a0a0a] text-white focus:border-[#4a28fd] focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
               placeholder="#ffffff"
             />
+          </div>
+          <div className="flex items-center space-x-2 mt-2">
+            <input
+              type="checkbox"
+              id="trans-bg"
+              checked={colors.transparentBackground || false}
+              onChange={handleTransparentToggle}
+              className="w-4 h-4 rounded border-[#333333] bg-[#0a0a0a] text-[#4a28fd] focus:ring-[#4a28fd] focus:ring-offset-0 cursor-pointer"
+            />
+            <Label htmlFor="trans-bg" className="text-sm text-[#a3a3a3] cursor-pointer">
+              Transparent Background
+            </Label>
           </div>
         </div>
       </div>
@@ -113,4 +140,3 @@ export default function QRColorPicker({ colors, onChange }: QRColorPickerProps) 
     </div>
   );
 }
-

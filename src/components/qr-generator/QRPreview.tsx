@@ -13,7 +13,8 @@ interface QRPreviewProps {
 
 export default function QRPreview({ data, colors, onQRCodeGenerated }: QRPreviewProps) {
   const [error, setError] = useState('');
-  const canvasRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const callbackRef = useRef(onQRCodeGenerated);
 
   // Update callback ref when it changes
@@ -26,7 +27,13 @@ export default function QRPreview({ data, colors, onQRCodeGenerated }: QRPreview
     if (!data) {
       setError('');
       if (canvasRef.current) {
-        canvasRef.current.innerHTML = '';
+        const ctx = canvasRef.current.getContext('2d');
+        if (ctx) {
+          ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+        }
+      }
+      if (containerRef.current) {
+        containerRef.current.innerHTML = '';
       }
       return;
     }
@@ -37,7 +44,10 @@ export default function QRPreview({ data, colors, onQRCodeGenerated }: QRPreview
     if (!validation.valid) {
       setError(validation.error || 'Invalid QR data');
       if (canvasRef.current) {
-        canvasRef.current.innerHTML = '';
+        const ctx = canvasRef.current.getContext('2d');
+        if (ctx) {
+          ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+        }
       }
       return;
     }
@@ -53,11 +63,15 @@ export default function QRPreview({ data, colors, onQRCodeGenerated }: QRPreview
         // Notify parent component FIRST so export section appears immediately
         callbackRef.current(newQrCode);
 
-        // Now append to DOM - this is async but we do it after notifying parent
-        if (canvasRef.current) {
-          // Clear and append in one go to minimize flicker
-          canvasRef.current.innerHTML = '';
-          await newQrCode.append(canvasRef.current);
+        // If there's a background image, composite it on canvas
+        if (colors.backgroundImage && canvasRef.current) {
+          await compositeQRWithBackground(newQrCode, colors.backgroundImage, canvasRef.current);
+        } else {
+          // Otherwise, render QR code normally in the container
+          if (containerRef.current) {
+            containerRef.current.innerHTML = '';
+            await newQrCode.append(containerRef.current);
+          }
         }
 
       } catch (err) {
@@ -87,7 +101,23 @@ export default function QRPreview({ data, colors, onQRCodeGenerated }: QRPreview
         )}
 
         {!error && data && (
-          <div ref={canvasRef} className="flex items-center justify-center" />
+          <>
+            {/* Canvas for composited QR + background image */}
+            <canvas
+              ref={canvasRef}
+              width={300}
+              height={300}
+              className="rounded"
+              style={{ 
+                display: colors.backgroundImage ? 'block' : 'none'
+              }}
+            />
+            {/* Container for regular QR code (no background image) */}
+            <div
+              ref={containerRef}
+              style={{ display: colors.backgroundImage ? 'none' : 'block' }}
+            />
+          </>
         )}
       </div>
 
@@ -103,3 +133,67 @@ export default function QRPreview({ data, colors, onQRCodeGenerated }: QRPreview
   );
 }
 
+/**
+ * Composites QR code with background image on a canvas
+ */
+async function compositeQRWithBackground(
+  qrCode: QRCodeStyling,
+  backgroundImage: { image: string; opacity: number },
+  canvas: HTMLCanvasElement
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      reject(new Error('Failed to get canvas context'));
+      return;
+    }
+
+    const size = canvas.width;
+
+    // Load background image
+    const bgImg = new Image();
+    bgImg.crossOrigin = 'anonymous';
+    bgImg.onload = async () => {
+      try {
+        // Draw background image
+        ctx.globalAlpha = backgroundImage.opacity;
+        ctx.drawImage(bgImg, 0, 0, size, size);
+        ctx.globalAlpha = 1.0;
+
+        // Get QR code as data URL
+        const qrBlob = await qrCode.getRawData('png');
+        if (!qrBlob) {
+          reject(new Error('Failed to generate QR data'));
+          return;
+        }
+
+        // Convert blob to data URL
+        const qrDataUrl = await new Promise<string>((resolveUrl, rejectUrl) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolveUrl(reader.result as string);
+          reader.onerror = rejectUrl;
+          reader.readAsDataURL(qrBlob);
+        });
+
+        // Load QR code image
+        const qrImg = new Image();
+        qrImg.onload = () => {
+          // Draw QR code on top of background
+          ctx.drawImage(qrImg, 0, 0, size, size);
+          resolve();
+        };
+        qrImg.onerror = () => {
+          reject(new Error('Failed to load QR image'));
+        };
+        qrImg.src = qrDataUrl;
+
+      } catch (err) {
+        reject(err);
+      }
+    };
+    bgImg.onerror = () => {
+      reject(new Error('Failed to load background image'));
+    };
+    bgImg.src = backgroundImage.image;
+  });
+}

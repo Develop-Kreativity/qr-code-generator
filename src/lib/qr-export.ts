@@ -1,6 +1,6 @@
 import QRCodeStyling from 'qr-code-styling';
 import { jsPDF } from 'jspdf';
-import { ExportFormat, PNGResolution } from '@/types/qr-types';
+import { ExportFormat, PNGResolution, ColorConfig } from '@/types/qr-types';
 import { format } from 'date-fns';
 
 /**
@@ -9,22 +9,24 @@ import { format } from 'date-fns';
  * @param exportFormat Export format (png, pdf)
  * @param filename Base filename (without extension)
  * @param resolution PNG resolution (only used for PNG export)
+ * @param colors Color configuration (needed for background image)
  */
 export async function exportQRCode(
   qrCode: QRCodeStyling,
   exportFormat: ExportFormat,
   filename: string,
-  resolution: PNGResolution = 1024
+  resolution: PNGResolution = 1024,
+  colors?: ColorConfig
 ): Promise<void> {
   const timestamp = format(new Date(), 'yyyyMMdd_HHmmss');
   const fullFilename = `${filename}_${timestamp}`;
   
   switch (exportFormat) {
     case 'png':
-      await exportAsPNG(qrCode, fullFilename, resolution);
+      await exportAsPNG(qrCode, fullFilename, resolution, colors);
       break;
     case 'pdf':
-      await exportAsPDF(qrCode, fullFilename);
+      await exportAsPDF(qrCode, fullFilename, colors);
       break;
     default:
       throw new Error(`Unsupported export format: ${exportFormat}`);
@@ -38,7 +40,8 @@ export async function exportQRCode(
 async function exportAsPNG(
   qrCode: QRCodeStyling,
   filename: string,
-  resolution: PNGResolution
+  resolution: PNGResolution,
+  colors?: ColorConfig
 ): Promise<void> {
   try {
     // Create isolated QR instance for export to avoid mutating original
@@ -51,17 +54,23 @@ async function exportAsPNG(
     });
     
     // Get raw PNG data without affecting DOM
-    const data = await exportQR.getRawData('png');
+    const qrData = await exportQR.getRawData('png');
     
-    if (!data) {
+    if (!qrData) {
       throw new Error('Failed to generate PNG data');
     }
     
     // Convert to Blob if it's a Buffer (Node.js environment)
-    const blob = data instanceof Blob ? data : new Blob([new Uint8Array(data as unknown as ArrayBuffer)]);
+    const qrBlob = qrData instanceof Blob ? qrData : new Blob([new Uint8Array(qrData as unknown as ArrayBuffer)]);
     
-    // Download the blob
-    downloadBlob(blob, `${filename}.png`);
+    // If there's a background image, composite them together
+    if (colors?.backgroundImage) {
+      const compositeBlob = await compositeQRWithBackground(qrBlob, colors.backgroundImage, resolution);
+      downloadBlob(compositeBlob, `${filename}.png`);
+    } else {
+      // Download the QR code directly
+      downloadBlob(qrBlob, `${filename}.png`);
+    }
     
   } catch (error) {
     console.error('PNG export failed:', error);
@@ -75,7 +84,8 @@ async function exportAsPNG(
  */
 async function exportAsPDF(
   qrCode: QRCodeStyling,
-  filename: string
+  filename: string,
+  colors?: ColorConfig
 ): Promise<void> {
   try {
     // Create isolated QR instance for export to avoid mutating original
@@ -86,17 +96,23 @@ async function exportAsPDF(
     });
     
     // Get QR code as PNG data without affecting DOM
-    const data = await exportQR.getRawData('png');
+    const qrData = await exportQR.getRawData('png');
     
-    if (!data) {
+    if (!qrData) {
       throw new Error('Failed to generate PNG data');
     }
     
     // Convert to Blob if it's a Buffer (Node.js environment)
-    const blob = data instanceof Blob ? data : new Blob([new Uint8Array(data as unknown as ArrayBuffer)]);
+    const qrBlob = qrData instanceof Blob ? qrData : new Blob([new Uint8Array(qrData as unknown as ArrayBuffer)]);
+    
+    // If there's a background image, composite them together
+    let finalBlob = qrBlob;
+    if (colors?.backgroundImage) {
+      finalBlob = await compositeQRWithBackground(qrBlob, colors.backgroundImage, 1024);
+    }
     
     // Convert blob to data URL
-    const dataUrl = await blobToDataURL(blob);
+    const dataUrl = await blobToDataURL(finalBlob);
     
     // Create PDF document (A4 size)
     const pdf = new jsPDF({
@@ -121,6 +137,66 @@ async function exportAsPDF(
     console.error('PDF export failed:', error);
     throw new Error('Failed to export QR code as PDF');
   }
+}
+
+/**
+ * Composites QR code with background image
+ * @param qrBlob QR code blob (with transparent background)
+ * @param backgroundImage Background image configuration
+ * @param size Output size
+ * @returns Promise that resolves to composite image blob
+ */
+async function compositeQRWithBackground(
+  qrBlob: Blob,
+  backgroundImage: { image: string; opacity: number },
+  size: number
+): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    
+    if (!ctx) {
+      reject(new Error('Failed to get canvas context'));
+      return;
+    }
+    
+    // Load background image
+    const bgImg = new Image();
+    bgImg.crossOrigin = 'anonymous';
+    bgImg.onload = () => {
+      // Draw background image
+      ctx.globalAlpha = backgroundImage.opacity;
+      ctx.drawImage(bgImg, 0, 0, size, size);
+      ctx.globalAlpha = 1.0;
+      
+      // Load QR code image
+      const qrUrl = URL.createObjectURL(qrBlob);
+      const qrImg = new Image();
+      qrImg.onload = () => {
+        // Draw QR code on top
+        ctx.drawImage(qrImg, 0, 0, size, size);
+        URL.revokeObjectURL(qrUrl);
+        
+        // Convert canvas to blob
+        canvas.toBlob((blob) => {
+          if (blob) {
+            resolve(blob);
+          } else {
+            reject(new Error('Failed to create composite blob'));
+          }
+        }, 'image/png');
+      };
+      qrImg.onerror = () => {
+        URL.revokeObjectURL(qrUrl);
+        reject(new Error('Failed to load QR code image'));
+      };
+      qrImg.src = qrUrl;
+    };
+    bgImg.onerror = () => reject(new Error('Failed to load background image'));
+    bgImg.src = backgroundImage.image;
+  });
 }
 
 /**
